@@ -1,5 +1,6 @@
 """Resolution Agent — WHY: drafts grounded answer + enforces FIN-001 refund guardrails.
 Flow: CRM context + RAG docs + policy check -> Ollama draft (or template) -> action."""
+import re
 import yaml
 from pathlib import Path
 from src.llm_client import generate
@@ -34,8 +35,13 @@ Customer: {customer}
 Orders: {ctx_orders}
 RAG: {rag_txt}
 Policy check: {reason}
-Write 4-line response: acknowledge, evidence (order/customer), policy citation, action+SLA. If billing and allowed=False say 'needs_approval'."""
+Write 4-line response: acknowledge, evidence (order/customer), policy citation, action+SLA. If billing and allowed=False say 'needs_approval'.
+STRICT: NEVER invent refund IDs like RFD-xxx. Do NOT write any Refund ID — it comes from create_refund tool after you."""
     draft, backend = generate(prompt)
+    # Strip any hallucinated refund IDs — real ID is injected by orchestrator from create_refund tool
+    if draft:
+        draft = re.sub(r"Refund ID:\s*RFD-[A-Z0-9]+", "Refund will be initiated (ID from system)", draft)
+        draft = re.sub(r"\bRFD-[A-Z0-9]{3,}\b", "[system-refund-id]", draft)
 
     action = {"type": "draft_reply", "refund": None, "approval_needed": False}
     if categories_needing_refund and order:

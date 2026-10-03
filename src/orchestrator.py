@@ -37,6 +37,11 @@ def run_ticket(text: str, customer_id: str) -> dict:
         if res["action"]["type"] == "auto_refund":
             rf = mcp_client.call("create_refund", order_id=res["action"]["refund"]["order_id"], amount=res["action"]["refund"]["amount"])
             trace["refund"] = rf
+            # Inject REAL refund ID from tool (replaces any placeholder)
+            res["draft"] = res["draft"].replace("[system-refund-id]", rf["refund_id"])
+            if "[system-refund-id]" not in res["draft"] and "Refund will be initiated" in res["draft"]:
+                res["draft"] += f" [Refund {rf['refund_id']} initiated]"
+            trace["resolution"] = res
             status = "auto_resolved"
         elif res["action"].get("approval_needed"):
             status = "needs_approval"
