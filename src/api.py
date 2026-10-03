@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from src.orchestrator import run_ticket
 from src.database import seed
 from src.rag_store import ingest_chroma_if_available
+from src.analytics_agent import overview as analytics_overview
 
 app = FastAPI(title="Enterprise MCP IT & Customer Service Hub + RAG")
 
@@ -32,3 +33,7 @@ def demo():
         ("CUST-003 overcharge $2500 — refund now!!!", "CUST-003"),
     ]
     return [run_ticket(txt, cid) for txt, cid in samples]
+
+@app.get("/analytics")
+def analytics():
+    return analytics_overview()

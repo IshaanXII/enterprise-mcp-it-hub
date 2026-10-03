@@ -7,6 +7,7 @@ from src.triage_agent import triage
 from src import mcp_client
 from src.rag_store import retrieve
 from src.resolution_agent import resolve
+from src.escalation_agent import escalate
 
 LOG_DIR = Path(__file__).resolve().parents[1] / "logs"
 LOG_DIR.mkdir(exist_ok=True)
@@ -53,6 +54,12 @@ def run_ticket(text: str, customer_id: str) -> dict:
                         text=text, category=tr["category"], priority=tr["priority"],
                         status=status, resolution=res["draft"])
         trace["status"] = status
+        # Node 6: escalation (multi-agent handoff)
+        try:
+            esc = escalate(trace["ticket_id"], tr, cust, res)
+        except Exception as e:
+            esc = {"escalated": False, "reasons": [], "page": "", "error": str(e)}
+        trace["escalation"] = esc
         trace["tools"] = mcp_client.last_tools()
     except Exception as e:
         # Global fallback — never crash live demo
